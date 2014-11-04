@@ -25,6 +25,12 @@ nonce = get_random_bytes(8)
 global app_key
 global app_secret
 
+
+global file_name = "/mrunal.txt"
+global key_file_name = "/mrunalEncryptedKey.txt"
+global download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads"
+
+
 # content: Data inside the user defined file
 # pad function - converts the data into hexadecimal format in bytes
 # Also equal chunks of block_size are created.
@@ -36,8 +42,8 @@ def unpad(content):
   return content.rstrip(b'\0')
 
 def readFile():
-    fileName = "working-draft.txt"
-    with open(fileName) as in_file:
+    #fileName = "working-draft.txt"
+    with open(file_name) as in_file:
       content =  in_file.readlines()
     
     stringContent = ''.join(content)
@@ -116,14 +122,14 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   access_token, user_id = flow.finish(code)
 
   client = dropbox.client.DropboxClient(access_token)
-  print 'linked account: ', client.account_info()
+  #print 'linked account: ', client.account_info()
 
   f = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/working-draft.txt', 'rb')
   try:
     #deduplication part => overwrite = True 
-    response = client.put_file("/mrunal.txt", ciphertext,True)
+    response = client.put_file(file_name, ciphertext,True)
     stringEncryptedKey = " ".join(encryptedSecretKey)
-    responseFromKey = client.put_file("/mrunalEncryptedKey.txt", stringEncryptedKey,True)
+    responseFromKey = client.put_file(key_file_name, stringEncryptedKey,True)
   except dropbox.rest.ErrorResponse as e : 
     print "Mrunal - Error occured while uploading the file- " 
     print dropbox.rest.ErrorResponse    
@@ -140,13 +146,15 @@ def downloadFile(access_token):
   #print 'metadata: ', folder_metadata
   
   
-  f1, metadata = client.get_file_and_metadata('/mrunalEncryptedKey.txt')  
+  f1, metadata = client.get_file_and_metadata(key_file_name)  
   f2 = open('mykey.pem','r')
   pvtkey = RSA.importKey(f2.read())
   decrypted = pvtkey.decrypt(f1.read()) 
     
-  f, metadata = client.get_file_and_metadata('/mrunal.txt')
-  out = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads/mrunal.txt', 'wb')
+  f, metadata = client.get_file_and_metadata(file_name)
+  #out = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads/mrunal.txt', 'wb')
+  out = open(download_file_path + file_name, 'wb')
+
   out.write(decrypt(ciphertext, secretKey))
   #print decrypt(ciphertext, secretKey)
   out.close()
@@ -165,6 +173,5 @@ access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKe
 # Read its contents
 # Decrypt that secret key using the pvtkey from rsa
 # Use the secret key from decryption process to decrypt content from the mrunal.txt
-
 downloadFile(access_token);
 
