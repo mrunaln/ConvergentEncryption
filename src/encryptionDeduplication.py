@@ -26,10 +26,13 @@ global app_key
 global app_secret
 
 
-global file_name = "/mrunal.txt"
-global key_file_name = "/mrunalEncryptedKey.txt"
-global download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads"
+global file_name
+global key_file_name
+global download_file_path
 
+file_name = "mrunal.txt"
+key_file_name = "/mrunalEncryptedKey.txt"
+download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads"
 
 # content: Data inside the user defined file
 # pad function - converts the data into hexadecimal format in bytes
@@ -127,7 +130,7 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   f = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/working-draft.txt', 'rb')
   try:
     #deduplication part => overwrite = True 
-    response = client.put_file(file_name, ciphertext,True)
+    response = client.put_file("/" +file_name, ciphertext,True)
     stringEncryptedKey = " ".join(encryptedSecretKey)
     responseFromKey = client.put_file(key_file_name, stringEncryptedKey,True)
   except dropbox.rest.ErrorResponse as e : 
@@ -151,9 +154,9 @@ def downloadFile(access_token):
   pvtkey = RSA.importKey(f2.read())
   decrypted = pvtkey.decrypt(f1.read()) 
     
-  f, metadata = client.get_file_and_metadata(file_name)
+  f, metadata = client.get_file_and_metadata("/" + file_name)
   #out = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads/mrunal.txt', 'wb')
-  out = open(download_file_path + file_name, 'wb')
+  out = open(download_file_path + "/" + file_name, 'wb')
 
   out.write(decrypt(ciphertext, secretKey))
   #print decrypt(ciphertext, secretKey)
