@@ -25,17 +25,22 @@ nonce = get_random_bytes(8)
 global app_key
 global app_secret
 
-
+# Storing the file_name to read from local machine and 
+# upload with the file with the same filename with encrypted contents on dropbox
 global file_name
-global key_file_name
-global download_file_path
-
 file_name = "mrunal.txt"
+
+#Store the encrypted key on dropbox with the following filename
+global key_file_name
 key_file_name = "/mrunalEncryptedKey.txt"
+
+# Location of the file downloaded on local machine
+global download_file_path
 download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads"
 
-# content: Data inside the user defined file
+
 # pad function - converts the data into hexadecimal format in bytes
+# content: Data inside the user defined file
 # Also equal chunks of block_size are created.
 def pad(content):
   return content + b"\0" * (AES.block_size - len(content) % AES.block_size)
@@ -45,7 +50,7 @@ def unpad(content):
   return content.rstrip(b'\0')
 
 def readFile():
-    #fileName = "working-draft.txt"
+    #fileName = "working-draft.txt
     with open(file_name) as in_file:
       content =  in_file.readlines()
     
@@ -61,7 +66,7 @@ def readFile():
     # RSA will be used to create pair of public key and pvt key.
     # Using that public key I will encrypt secret key to store on the cloud.
     # Now only my paired secret from RSA can decrypt the data.
-def generateRsaKeyPair(secretKey):
+def generate_Rsa_Key_Pair(secretKey):
     keys = RSA.generate(1024)
     f = open('mykey.pem','w')
     f.write(keys.exportKey('PEM'))
@@ -77,7 +82,6 @@ def generateRsaKeyPair(secretKey):
     return publickey, encryptedSecretKey
 
 def encrypt():
-  print "E N C R Y P T "
   stringContent, secretKey = readFile();
   paddedContent   = pad(stringContent)
   # Note that - In counter mode no iv, but they use nonce + counter check wiki diagram
@@ -86,19 +90,17 @@ def encrypt():
   ctr = Counter.new(64,nonce)
   aes = AES.new(secretKey, AES.MODE_CTR,counter=ctr)
   ciphertext = aes.encrypt(paddedContent)
-  print "Encypted Content = " + ciphertext
+  #print "Encypted Content = " + ciphertext
   
   # Here used iv to randomize the data to greater extend.
   iv = Random.new().read(AES.block_size);
   return  iv+ciphertext, secretKey
 
 def decrypt(ciphertext, secretKey):
-  print "D E C R Y P T  "
   if len(ciphertext) <= AES.block_size:
     raise Exception ("Invalid ciphertext")
   
   ciphertext = ciphertext[AES.block_size:]
-  print AES.block_size
   ctr = Counter.new(64,nonce)
   aes = AES.new(secretKey, AES.MODE_CTR , counter=ctr)
   original_data = aes.decrypt(ciphertext)
@@ -109,8 +111,7 @@ def decrypt(ciphertext, secretKey):
 
 def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   # TO DO : Enter your app key and App secret.
-  app_key = 'osa0wcmmglq7xwg'
-  app_secret = 'vw40uc9sbw7rez2'
+
   # Get your app key and secret from the Dropbox developer website
   flow = dropbox.client.DropboxOAuth2FlowNoRedirect(app_key, app_secret)
 
@@ -123,10 +124,7 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
 
   # This will fail if the user enters an invalid authorization code
   access_token, user_id = flow.finish(code)
-
   client = dropbox.client.DropboxClient(access_token)
-  #print 'linked account: ', client.account_info()
-
   f = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/working-draft.txt', 'rb')
   try:
     #deduplication part => overwrite = True 
@@ -136,45 +134,49 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   except dropbox.rest.ErrorResponse as e : 
     print "Mrunal - Error occured while uploading the file- " 
     print dropbox.rest.ErrorResponse    
-
   #print 'uploaded: ', response
   return access_token
   
 
 
 def downloadFile(access_token):
-  print "In downloadFile function "
   client = dropbox.client.DropboxClient(access_token)
   #folder_metadata = client.metadata('/')
   #print 'metadata: ', folder_metadata
   
   
   f1, metadata = client.get_file_and_metadata(key_file_name)  
+  
   f2 = open('mykey.pem','r')
   pvtkey = RSA.importKey(f2.read())
   decrypted = pvtkey.decrypt(f1.read()) 
-    
-  f, metadata = client.get_file_and_metadata("/" + file_name)
-  #out = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads/mrunal.txt', 'wb')
-  out = open(download_file_path + "/" + file_name, 'wb')
 
+  f, metadata = client.get_file_and_metadata("/" + file_name)
+  out = open(download_file_path + "/" + file_name, 'wb')
   out.write(decrypt(ciphertext, secretKey))
-  #print decrypt(ciphertext, secretKey)
   out.close()
   
 
+def printStatus(msg):
+  print msg
 
 
 
 
-
+printStatus("Starting data encryption")
 ciphertext, secretKey = encrypt()
-rsa_public_key, encryptedSecretKey = generateRsaKeyPair(secretKey);
+printStatus("Data encryption complete")
+
+printStatus("Generating RSA key pair")
+rsa_public_key, encryptedSecretKey = generate_Rsa_Key_Pair(secretKey);
+
+printStatus("Authenticate yourself and then will start uploading the file")
 access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKey)
 
+printStatus("Downloading the file - " + file_name + " \n Download location - " + download_file_path)
 # First download the encrypted key file mrunalEncryptedKey.txt
 # Read its contents
 # Decrypt that secret key using the pvtkey from rsa
 # Use the secret key from decryption process to decrypt content from the mrunal.txt
 downloadFile(access_token);
-
+printStatus("Download successfully complete !")
