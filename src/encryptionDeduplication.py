@@ -5,6 +5,7 @@ by Mrunal Nargunde
 
 '''
 
+import os
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto import Random
@@ -28,15 +29,23 @@ global app_secret
 # Storing the file_name to read from local machine and 
 # upload with the file with the same filename with encrypted contents on dropbox
 global file_name
+global local_filePath
+global packageDirectory
+
+local_filePath = "../content/"
 file_name = "mrunal.txt"
+packageDirectory = file_name.split(".")
 
 #Store the encrypted key on dropbox with the following filename
 global key_file_name
-key_file_name = "/mrunalEncryptedKey.txt"
+key_file_name = "/mrunalEncryptedKey"+file_name
 
 # Location of the file downloaded on local machine
 global download_file_path
-download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/downloads"
+download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/downloads/" + packageDirectory[0]
+# If the directory does not exists then create one.
+if not os.path.exists(download_file_path):
+    os.makedirs(download_file_path )
 
 
 # pad function - converts the data into hexadecimal format in bytes
@@ -51,7 +60,7 @@ def unpad(content):
 
 def readFile():
     #fileName = "working-draft.txt
-    with open(file_name) as in_file:
+    with open(local_filePath + file_name) as in_file:
       content =  in_file.readlines()
     
     stringContent = ''.join(content)
@@ -68,14 +77,14 @@ def readFile():
     # Now only my paired secret from RSA can decrypt the data.
 def generate_Rsa_Key_Pair(secretKey):
     keys = RSA.generate(1024)
-    f = open('mykey.pem','w')
+    f = open('../keyManager/my_pvt_rsa_key.pem','w')
     f.write(keys.exportKey('PEM'))
     f.close()
 
-    f = open('mykeypublic.pem','w')
+    f = open('../keyManager/my_public_rsa_key.pem','w')
     f.write(keys.publickey().exportKey('PEM'))
     f.close()
-    f = open('mykeypublic.pem','r')
+    f = open('../keyManager/my_public_rsa_key.pem','r')
     publickey = RSA.importKey(f.read())
     
     encryptedSecretKey = publickey.encrypt(pad(secretKey), None)
@@ -111,7 +120,7 @@ def decrypt(ciphertext, secretKey):
 
 def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   # TO DO : Enter your app key and App secret.
-
+  
   # Get your app key and secret from the Dropbox developer website
   flow = dropbox.client.DropboxOAuth2FlowNoRedirect(app_key, app_secret)
 
@@ -128,9 +137,9 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   f = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/working-draft.txt', 'rb')
   try:
     #deduplication part => overwrite = True 
-    response = client.put_file("/" +file_name, ciphertext,True)
+    response = client.put_file("/" + packageDirectory[0] + "/"+file_name, ciphertext,True)
     stringEncryptedKey = " ".join(encryptedSecretKey)
-    responseFromKey = client.put_file(key_file_name, stringEncryptedKey,True)
+    responseFromKey = client.put_file(packageDirectory[0] + "/"+ key_file_name, stringEncryptedKey,True)
   except dropbox.rest.ErrorResponse as e : 
     print "Mrunal - Error occured while uploading the file- " 
     print dropbox.rest.ErrorResponse    
@@ -145,13 +154,13 @@ def downloadFile(access_token):
   #print 'metadata: ', folder_metadata
   
   
-  f1, metadata = client.get_file_and_metadata(key_file_name)  
+  f1, metadata = client.get_file_and_metadata(packageDirectory[0] + "/" + key_file_name)
   
-  f2 = open('mykey.pem','r')
+  f2 = open('../keyManager/my_pvt_rsa_key.pem','r')
   pvtkey = RSA.importKey(f2.read())
   decrypted = pvtkey.decrypt(f1.read()) 
 
-  f, metadata = client.get_file_and_metadata("/" + file_name)
+  f, metadata = client.get_file_and_metadata("/" + packageDirectory[0] + "/"+ file_name)
   out = open(download_file_path + "/" + file_name, 'wb')
   out.write(decrypt(ciphertext, secretKey))
   out.close()
@@ -161,6 +170,9 @@ def printStatus(msg):
   print msg
 
 
+print "- - - - - - - - - - - - - - - - \n"
+printStatus ("File : " + file_name + " will be encrypted, de-duplicate, uploaded, decrypt data, download file")
+print "\n- - - - - - - - - - - - - - - - \n"
 
 
 printStatus("Starting data encryption")
