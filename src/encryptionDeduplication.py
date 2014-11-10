@@ -116,11 +116,10 @@ def decrypt(ciphertext, secretKey):
   
   return unpad(original_data)
 
-
-
-def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
+def authenticateApp():
   # TO DO : Enter your app key and App secret.
-  
+  app_key = 'osa0wcmmglq7xwg'
+  app_secret = 'vw40uc9sbw7rez2'
   # Get your app key and secret from the Dropbox developer website
   flow = dropbox.client.DropboxOAuth2FlowNoRedirect(app_key, app_secret)
 
@@ -134,7 +133,10 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey):
   # This will fail if the user enters an invalid authorization code
   access_token, user_id = flow.finish(code)
   client = dropbox.client.DropboxClient(access_token)
-  f = open('/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/1_Assignment/working-draft.txt', 'rb')
+  return access_token, client
+
+def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey, access_token, client):
+
   try:
     #deduplication part => overwrite = True 
     response = client.put_file("/" + packageDirectory[0] + "/"+file_name, ciphertext,True)
@@ -164,7 +166,37 @@ def downloadFile(access_token):
   out = open(download_file_path + "/" + file_name, 'wb')
   out.write(decrypt(ciphertext, secretKey))
   out.close()
-  
+
+
+def bob_generate_Rsa_Key_Pair():
+
+    keys = RSA.generate(1024)
+    f = open('../keyManager/bob/bob_pvt_rsa_key.pem','w')
+    f.write(keys.exportKey('PEM'))
+    f.close()
+
+    f = open('../keyManager/bob/bob_public_rsa_key.pem','w')
+    f.write(keys.publickey().exportKey('PEM'))
+    f.close()
+
+def alice_shares_with_bob():
+  '''
+  Alice gets her own encrypted key from dropbox
+  decrypts the key
+  '''
+  client = dropbox.client.DropboxClient(access_token)
+  f1, metadata = client.get_file_and_metadata(packageDirectory[0] + "/" + key_file_name)
+  f2 = open('../keyManager/my_pvt_rsa_key.pem','r')
+  pvtkey = RSA.importKey(f2.read())
+  decryptedKey = pvtkey.decrypt(f1.read())
+
+  '''
+  Re-seal this decrypted key with bobs_public_key
+  '''
+  f = open('../keyManager/bob/bob_public_rsa_key.pem','r')
+  publickey = RSA.importKey(f.read())
+  encryptedSecretKeyForBob = publickey.encrypt(pad(decryptedKey), None)
+  return encryptedSecretKeyForBob;
 
 def printStatus(msg):
   print msg
@@ -182,8 +214,11 @@ printStatus("Data encryption complete")
 printStatus("Generating RSA key pair")
 rsa_public_key, encryptedSecretKey = generate_Rsa_Key_Pair(secretKey);
 
-printStatus("Authenticate yourself and then will start uploading the file")
-access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKey)
+printStatus("Authenticate yourself");
+access_token, client = authenticateApp()
+
+printStatus ("Started uploading the file")
+access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKey, access_token, client)
 
 printStatus("Downloading the file - " + file_name + " \n Download location - " + download_file_path)
 # First download the encrypted key file mrunalEncryptedKey.txt
@@ -192,3 +227,30 @@ printStatus("Downloading the file - " + file_name + " \n Download location - " +
 # Use the secret key from decryption process to decrypt content from the mrunal.txt
 downloadFile(access_token);
 printStatus("Download successfully complete !")
+
+
+print "\n \n F I L E   S H A R E   F E A T U R E \n"
+print "Alice wants to share a file with Bob\n"
+
+bob_generate_Rsa_Key_Pair()
+printStatus("Hi, I am Alice!")
+printStatus("I am re-sealing this key with Bobs public key")
+
+encryptedSecretKeyForBob = alice_shares_with_bob()
+
+# Assume bob is notified ciphertext and encryptedSecretKeyForBob
+printStatus("\n Let us assume: Alice notifies Bob with key and cipher text ! \n");
+
+download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/sharedFiles/downloads" + "/ForBob/" + packageDirectory[0]
+if not os.path.exists(download_file_path):
+    os.makedirs(download_file_path )
+
+printStatus("Done ! Let me share this cryptic file and key with Bob\n\n")
+access_token = upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey, access_token, client)
+
+printStatus("Hi, I am Bob !")
+printStatus("Oh I received something from Alice !");
+
+printStatus(" Downloading the file - " + file_name + " \n Download location - " + download_file_path)
+downloadFile(access_token)
+printStatus("Download successfully complete !  Lets check !")
