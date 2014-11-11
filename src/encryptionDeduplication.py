@@ -125,7 +125,7 @@ def authenticateApp():
 
   # Have the user sign in and authorize this token
   authorize_url = flow.start()
-  print '1. Go to: ' + authorize_url
+  print '1. Go to: \n' + authorize_url
   print '2. Click "Allow" (you might have to log in first)'
   print '3. Copy the authorization code.'
   code = raw_input("Enter the authorization code here: ").strip()
@@ -142,8 +142,9 @@ def upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey, access_
     response = client.put_file("/" + packageDirectory[0] + "/"+file_name, ciphertext,True)
     stringEncryptedKey = " ".join(encryptedSecretKey)
     responseFromKey = client.put_file(packageDirectory[0] + "/"+ key_file_name, stringEncryptedKey,True)
+    print "Alice, your encrypted file has been successfully uploaded !\n"
   except dropbox.rest.ErrorResponse as e : 
-    print "Mrunal - Error occured while uploading the file- " 
+    print "Alice - Error occured while uploading the file- " 
     print dropbox.rest.ErrorResponse    
   #print 'uploaded: ', response
   return access_token
@@ -202,55 +203,76 @@ def printStatus(msg):
   print msg
 
 
-print "- - - - - - - - - - - - - - - - \n"
-printStatus ("File : " + file_name + " will be encrypted, de-duplicate, uploaded, decrypt data, download file")
-print "\n- - - - - - - - - - - - - - - - \n"
+print "* * * * * * * * * * * * * * * * * * * * * * * * * * * * \n"
+print "Privacy Enhanced Cloud Storage Admitting De-duplication\n\n" 
+printStatus (" Hi I am Alice,  I want to use file : " + file_name + " for encryption, de-duplication, uploading, decrypting data & downloading file")
+print "* * * * * * * * * * * * * * * * * * * * * * * * * * * * \n"
 
 
-printStatus("Starting data encryption")
+printStatus("Data encryption in progress ")
 ciphertext, secretKey = encrypt()
-printStatus("Data encryption complete")
+printStatus("Alice, your data is encrypted successfully!\n")
 
-printStatus("Generating RSA key pair")
+printStatus("Generating RSA key pair for Alice\n")
 rsa_public_key, encryptedSecretKey = generate_Rsa_Key_Pair(secretKey);
 
-printStatus("Authenticate yourself");
+printStatus("Alice, Can you please authenticate your app ? \n");
 access_token, client = authenticateApp()
+print "Authentication successful ! \n " 
 
-printStatus ("Started uploading the file")
+printStatus ("File upload in progress . . . ")
 access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKey, access_token, client)
 
-printStatus("Downloading the file - " + file_name + " \n Download location - " + download_file_path)
-# First download the encrypted key file mrunalEncryptedKey.txt
-# Read its contents
-# Decrypt that secret key using the pvtkey from rsa
-# Use the secret key from decryption process to decrypt content from the mrunal.txt
-downloadFile(access_token);
-printStatus("Download successfully complete !")
+while(1):
+  print "\n What do you want to do next . . .\n 1. Download the file \n 2. Share the file with friend\n 3. Exit\n"
+  featureChoice=int (input("Enter your choice here : "))
+  if featureChoice == 1:
+      print "\n \n D O W N L O A D F I L E   F E A T U R E \n"
+      printStatus("Downloading the file - " + file_name + " \n Download location - " + download_file_path)
+      # First download the encrypted key file mrunalEncryptedKey.txt
+      # Read its contents
+      # Decrypt that secret key using the pvtkey from rsa
+      # Use the secret key from decryption process to decrypt content from the mrunal.txt
+      downloadFile(access_token);
+      printStatus("Download successfully complete !")
+
+  elif featureChoice == 2:
+      print "\n \n F I L E   S H A R E   F E A T U R E \n"
+      print "Alice wants to share a file with Bob\n\n"
+
+      print "Hello Alice!\n You can share this file with the following friends : \n 1. Bob \n 2. Chris\n"
+      friendId = int(input("Enter the friend id here : "))
+
+      if(friendId == 1):
+        bob_generate_Rsa_Key_Pair()
+        printStatus("Hi, I am Alice!")
+        printStatus("I am re-sealing this key with Bobs public key")
+
+        encryptedSecretKeyForBob = alice_shares_with_bob()
+
+        # Assume bob is notified ciphertext and encryptedSecretKeyForBob
+        printStatus("\n Let us assume: Alice notifies Bob with key and cipher text ! \n");
+
+        download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/sharedFiles/downloads" + "/ForBob/" + packageDirectory[0]
+        if not os.path.exists(download_file_path):
+          os.makedirs(download_file_path )
+
+        printStatus("Done ! Let me share this cryptic file and key with Bob\n\n")
+        access_token = upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKeyForBob, access_token, client)
+
+        printStatus("Hi, I am Bob !")
+        printStatus("Oh I received something from Alice !");
+
+        printStatus(" Downloading the file - " + file_name + " \n Download location - " + download_file_path)
+        downloadFile(access_token)
+        printStatus("Download successfully complete !  Lets check !")
+        # end of if freind Id == 1
+
+  elif featureChoice == 3:
+      break;
+  else:
+    print "Incorrect entry ! :("
 
 
-print "\n \n F I L E   S H A R E   F E A T U R E \n"
-print "Alice wants to share a file with Bob\n"
 
-bob_generate_Rsa_Key_Pair()
-printStatus("Hi, I am Alice!")
-printStatus("I am re-sealing this key with Bobs public key")
 
-encryptedSecretKeyForBob = alice_shares_with_bob()
-
-# Assume bob is notified ciphertext and encryptedSecretKeyForBob
-printStatus("\n Let us assume: Alice notifies Bob with key and cipher text ! \n");
-
-download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/sharedFiles/downloads" + "/ForBob/" + packageDirectory[0]
-if not os.path.exists(download_file_path):
-    os.makedirs(download_file_path )
-
-printStatus("Done ! Let me share this cryptic file and key with Bob\n\n")
-access_token = upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKey, access_token, client)
-
-printStatus("Hi, I am Bob !")
-printStatus("Oh I received something from Alice !");
-
-printStatus(" Downloading the file - " + file_name + " \n Download location - " + download_file_path)
-downloadFile(access_token)
-printStatus("Download successfully complete !  Lets check !")
