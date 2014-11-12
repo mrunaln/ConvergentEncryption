@@ -17,6 +17,7 @@ import dropbox
 from base64 import b64decode
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from array import *
 
 # this is used to create a counter.
 # We have padded data in bytes.
@@ -31,6 +32,8 @@ global app_secret
 global file_name
 global local_filePath
 global packageDirectory
+global all_file_names_array
+
 
 local_filePath = "../content/"
 file_name = "mrunal.txt"
@@ -40,12 +43,18 @@ packageDirectory = file_name.split(".")
 global key_file_name
 key_file_name = "/mrunalEncryptedKey"+file_name
 
+
+def createDirStructure(path):
+  # If the directory does not exists then create one.
+  if not os.path.exists(path):
+    os.makedirs(path)
+
+
+
 # Location of the file downloaded on local machine
 global download_file_path
 download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/downloads/" + packageDirectory[0]
-# If the directory does not exists then create one.
-if not os.path.exists(download_file_path):
-    os.makedirs(download_file_path )
+createDirStructure(download_file_path)
 
 
 # pad function - converts the data into hexadecimal format in bytes
@@ -81,14 +90,20 @@ def generate_Rsa_Key_Pair(secretKey):
     f.write(keys.exportKey('PEM'))
     f.close()
 
+    f = open('../keyManager/my_public_rsa_key.pem','r')
+    publickey = RSA.importKey(f.read())
+
     f = open('../keyManager/my_public_rsa_key.pem','w')
     f.write(keys.publickey().exportKey('PEM'))
     f.close()
+
+    return publickey
+
+def getEncryptedSecretKey(secretKey):
     f = open('../keyManager/my_public_rsa_key.pem','r')
     publickey = RSA.importKey(f.read())
-    
     encryptedSecretKey = publickey.encrypt(pad(secretKey), None)
-    return publickey, encryptedSecretKey
+    return encryptedSecretKey
 
 def encrypt():
   stringContent, secretKey = readFile();
@@ -156,7 +171,6 @@ def downloadFile(access_token):
   #folder_metadata = client.metadata('/')
   #print 'metadata: ', folder_metadata
   
-  
   f1, metadata = client.get_file_and_metadata(packageDirectory[0] + "/" + key_file_name)
   
   f2 = open('../keyManager/my_pvt_rsa_key.pem','r')
@@ -203,6 +217,7 @@ def printStatus(msg):
   print msg
 
 
+
 print "* * * * * * * * * * * * * * * * * * * * * * * * * * * * \n"
 print "Privacy Enhanced Cloud Storage Admitting De-duplication\n\n" 
 printStatus (" Hi I am Alice,  I want to use file : " + file_name + " for encryption, de-duplication, uploading, decrypting data & downloading file")
@@ -214,7 +229,10 @@ ciphertext, secretKey = encrypt()
 printStatus("Alice, your data is encrypted successfully!\n")
 
 printStatus("Generating RSA key pair for Alice\n")
-rsa_public_key, encryptedSecretKey = generate_Rsa_Key_Pair(secretKey);
+rsa_public_key = generate_Rsa_Key_Pair(secretKey);
+
+printStatus("Creating new encrypted secret key\n")
+encryptedSecretKey = getEncryptedSecretKey(secretKey);
 
 printStatus("Alice, Can you please authenticate your app ? \n");
 access_token, client = authenticateApp()
@@ -224,10 +242,15 @@ printStatus ("File upload in progress . . . ")
 access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKey, access_token, client)
 
 while(1):
-  print "\n What do you want to do next . . .\n 1. Download the file \n 2. Share the file with friend\n 3. Exit\n"
+  print "\n What do you want to do next . . .\n 1. Download the file \n 2. Share the file with friend\n 3. Change file name \n 4. Exit\n"
   featureChoice=int (input("Enter your choice here : "))
   if featureChoice == 1:
-      print "\n \n D O W N L O A D F I L E   F E A T U R E \n"
+
+      print "\n \n D O W N L O A D  F I L E   F E A T U R E \n"
+      # Location of the file downloaded on local machine
+      download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/downloads/" + packageDirectory[0]
+      createDirStructure(download_file_path)
+
       printStatus("Downloading the file - " + file_name + " \n Download location - " + download_file_path)
       # First download the encrypted key file mrunalEncryptedKey.txt
       # Read its contents
@@ -254,8 +277,7 @@ while(1):
         printStatus("\n Let us assume: Alice notifies Bob with key and cipher text ! \n");
 
         download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/sharedFiles/downloads" + "/ForBob/" + packageDirectory[0]
-        if not os.path.exists(download_file_path):
-          os.makedirs(download_file_path )
+        createDirStructure(download_file_path)
 
         printStatus("Done ! Let me share this cryptic file and key with Bob\n\n")
         access_token = upload_File_And_Key_And_Get_Metadata(ciphertext, encryptedSecretKeyForBob, access_token, client)
@@ -269,7 +291,35 @@ while(1):
         # end of if freind Id == 1
 
   elif featureChoice == 3:
-      break;
+    # Change the filename and upload the data on cloud
+    print "\n \n C H A N G E   F I L E N A M E \n"
+    all_file_names_array = ["mrunal.txt" , "sample.mp4", "favicon.ico" , "sample.jpg" , "sample.png" , "notfoundpage.html" , "sample.html"]
+    print "Files present in content folders: \n "
+    for f in all_file_names_array:
+      print f
+    file_name = raw_input("Enter filename you want to use for this session : ")
+    packageDirectory = file_name.split(".")
+    #Store the encrypted key on dropbox with the following filename
+    key_file_name = "/mrunalEncryptedKey"+file_name
+
+    # Location of the file downloaded on local machine
+    download_file_path = "/Users/mrunalnargunde/Desktop/Development/fall2014/appliedCrypt/ConvergentEncryption/downloads/" + packageDirectory[0]
+    createDirStructure(download_file_path)
+
+    printStatus("Data encryption in progress ")
+    ciphertext, secretKey = encrypt()
+    printStatus("Alice, your data is encrypted successfully!\n")
+
+    printStatus("Creating new encrypted secret key\n")
+    encryptedSecretKey = getEncryptedSecretKey(secretKey);
+
+    printStatus ("File upload in progress . . . ")
+    access_token = upload_File_And_Key_And_Get_Metadata(ciphertext,encryptedSecretKey, access_token, client)
+
+
+  elif featureChoice == 4:
+      print "Goodbye !"
+
   else:
     print "Incorrect entry ! :("
 
